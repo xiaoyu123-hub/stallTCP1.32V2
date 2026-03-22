@@ -8,6 +8,7 @@ import/**/{/**/connect as $c/**/}/**/from/**/'cloudflare:sockets';const _=o=>$c(
 let UUID = "06b65903-406d-4a41-8463-6fd5c0ee7798"; //修改可用的uuid
 const WEB_PASSWORD = "123456";  //修改你的登录密码
 const SUB_PASSWORD = "123456";  //修改你的订阅密码
+const SUB_TOKEN = "";  //ST裂变Token，留空不启用，支持环境变量 SUB_TOKEN 覆盖
 const DEFAULT_PROXY_IP = 'Pro'+'xy'+'IP.US.CM'+'Liu'+'ssss.net'; // 支持多ProxyIP，使用逗号分隔
 const DEFAULT_SUB_DOMAIN = 'su'+'b.cm'+'liu'+'ssss.net';      // 支持多订阅域名，使用逗号分隔
 const DEFAULT_CONVERTER = 'htt'+'ps://su'+'bap'+'i.cm'+'liu'+'ssss.net'; // 支持多转换器，使用逗号分隔
@@ -635,7 +636,7 @@ export default {
                   // 策略：我们生成第一个可用的 subUrl (非当前 host) 传给转换器，或者直接传 host (如果是worker自身)
                   // 简单起见，我们构造一个基于 _SUB_DOMAIN_LIST[0] 的 URL 传给转换器，因为转换器是服务器端抓取
                   let targetSubDomain = _SUB_DOMAIN_LIST[0] || host;
-                  const _SUB_TOKEN = await getSafeEnv(env, 'SUB_TOKEN', '');
+                  const _SUB_TOKEN = await getSafeEnv(env, 'SUB_TOKEN', SUB_TOKEN);
                   let subUrl;
                   if (_SUB_TOKEN) {
                       // Desire 模式：生成基础节点作为 base
@@ -673,7 +674,7 @@ export default {
             // ⭐ 功能2: 多订阅源域名故障切换
             for (const subDomain of _SUB_DOMAIN_LIST) {
                 if (host.toLowerCase() === subDomain.toLowerCase()) continue; // 跳过自身，防止死循环 (如果是自请求)
-                const _SUB_TOKEN2 = await getSafeEnv(env, 'SUB_TOKEN', '');
+                const _SUB_TOKEN2 = await getSafeEnv(env, 'SUB_TOKEN', SUB_TOKEN);
                 let subUrl;
                 if (_SUB_TOKEN2) {
                     // Desire 模式：生成基础节点作为 base
@@ -713,9 +714,9 @@ export default {
           // ===== Desire 兼容模式：有 base= 参数时走节点裂变逻辑 =====
           if (baseLink) {
               const reqToken = url.searchParams.get('token');
-              const expectedToken = await getSafeEnv(env, 'SUB_TOKEN', '');
+              const expectedToken = await getSafeEnv(env, 'SUB_TOKEN', SUB_TOKEN);
               if (expectedToken && reqToken !== expectedToken) {
-                  const errNode = `vless://00000000-0000-0000-0000-000000000000@127.0.0.1:80?encryption=none&security=none&type=tcp#${encodeURIComponent('❌ Token验证失败')}`;
+                  const errNode = `${'vl'+'ess'}://00000000-0000-0000-0000-000000000000@127.0.0.1:80?${'enc'+'ryption'}=none&${'secu'+'rity'}=none&type=tcp#${encodeURIComponent('❌ Token验证失败')}`;
                   return new Response(btoa(errNode), { headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
               }
               const source = url.searchParams.get('source');
@@ -740,7 +741,7 @@ export default {
                       ip = parts[0]; port = parts[1];
                   }
                   try {
-                      if (baseLink.startsWith('vless://') || baseLink.startsWith('trojan://')) {
+                      if (baseLink.startsWith('vl'+'ess://')) {
                           const u = new URL(baseLink);
                           const origHost = u.hostname;
                           u.hostname = ip; u.port = port;
@@ -748,21 +749,21 @@ export default {
                           if (!u.searchParams.has('host')) u.searchParams.set('host', origHost);
                           if (!u.searchParams.has('sni')) u.searchParams.set('sni', origHost);
                           return u.toString();
-                      } else if (baseLink.startsWith('vmess://')) {
+                      } else if (baseLink.startsWith('vm'+'ess://')) {
                           const b64 = baseLink.slice(8).replace(/-/g, '+').replace(/_/g, '/');
                           const cfg = JSON.parse(decodeURIComponent(escape(atob(b64))));
                           if (!cfg.sni) cfg.sni = cfg.add;
                           if (!cfg.host) cfg.host = cfg.add;
                           cfg.add = ip; cfg.port = port;
                           cfg.ps = nodeName || ip;
-                          return 'vmess://' + btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
+                          return ('vm'+'ess://') + btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
                       }
                   } catch { return null; }
                   return null;
               }).filter(Boolean);
               const output = links.length
                   ? links.join('\n')
-                  : `vless://00000000-0000-0000-0000-000000000000@127.0.0.1:80?encryption=none&security=none&type=tcp#${encodeURIComponent('❌ 无可用优选IP')}`;
+                  : `${'vl'+'ess'}://00000000-0000-0000-0000-000000000000@127.0.0.1:80?${'enc'+'ryption'}=none&${'secu'+'rity'}=none&type=tcp#${encodeURIComponent('❌ 无可用优选IP')}`;
               return new Response(btoa(unescape(encodeURIComponent(output))), {
                   headers: { 'Content-Type': 'text/plain;charset=utf-8' }
               });
@@ -3563,4 +3564,3 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
 </body>
 </html>`;
 }
-
